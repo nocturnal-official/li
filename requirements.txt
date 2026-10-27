@@ -1,2 +1,0 @@
-# No third-party packages are required.
-# Recommended: Python 3.9+ with Tkinter support.
