@@ -112,49 +112,60 @@ def make_tab(title):
 def make_form(parent, fields):
     """Create labelled input boxes. fields = [(key, label, options_or_None), ...]
     Returns a dictionary {key: StringVar}."""
-    form = tk.LabelFrame(parent, text="Details", padx=10, pady=8)
-    form.pack(fill="x", padx=10, pady=5)
+    form = ttk.LabelFrame(parent, text="  DETAILS  ", padding=(14, 10))
+    form.pack(fill="x", padx=14, pady=(12, 8))
     variables = {}
     for i, (key, label, options) in enumerate(fields):
         var = tk.StringVar()
         variables[key] = var
         row, col = i // 2, (i % 2) * 2
-        tk.Label(form, text=label).grid(row=row, column=col, sticky="w", padx=5, pady=4)
+        ttk.Label(form, text=label).grid(row=row, column=col, sticky="w", padx=(6, 8), pady=7)
         if options:
-            widget = ttk.Combobox(form, textvariable=var, values=options, state="readonly", width=27)
+            widget = ttk.Combobox(form, textvariable=var, values=options,
+                                  state="readonly", width=28, style="Field.TCombobox")
         else:
-            widget = tk.Entry(form, textvariable=var, width=30)
-        widget.grid(row=row, column=col + 1, padx=5, pady=4)
+            widget = ttk.Entry(form, textvariable=var, width=31, style="Field.TEntry")
+        widget.grid(row=row, column=col + 1, sticky="ew", padx=(0, 14), pady=7)
+        form.grid_columnconfigure(col + 1, weight=1)
     return variables
 
 
 def make_buttons(parent, buttons):
     """buttons = [(text, function), ...]"""
-    bar = tk.Frame(parent)
-    bar.pack(fill="x", padx=10)
-    for text, command in buttons:
-        tk.Button(bar, text=text, command=command, width=16).pack(side="left", padx=4, pady=4)
+    bar = ttk.Frame(parent, padding=(14, 2, 14, 8))
+    bar.pack(fill="x")
+    for i, (text, command) in enumerate(buttons):
+        style = "Danger.TButton" if text == "Delete" else (
+            "Primary.TButton" if text in ("Add", "Record Payment", "Update") else "Action.TButton")
+        ttk.Button(bar, text=text, command=command, style=style).pack(side="left", padx=(0, 8), pady=3)
 
 
 def make_table(parent, headings):
-    frame = tk.Frame(parent)
-    frame.pack(fill="both", expand=True, padx=10, pady=5)
-    tree = ttk.Treeview(frame, columns=headings, show="headings", height=8)
+    frame = ttk.Frame(parent, padding=(14, 4, 14, 14))
+    frame.pack(fill="both", expand=True)
+    tree = ttk.Treeview(frame, columns=headings, show="headings", height=10,
+                        style="Records.Treeview")
     for h in headings:
         tree.heading(h, text=h)
-        tree.column(h, width=110)
-    scroll = ttk.Scrollbar(frame, orient="vertical", command=tree.yview)
-    tree.configure(yscrollcommand=scroll.set)
-    tree.pack(side="left", fill="both", expand=True)
-    scroll.pack(side="right", fill="y")
+        tree.column(h, width=max(115, min(190, len(str(h)) * 10)), minwidth=90, anchor="w")
+    yscroll = ttk.Scrollbar(frame, orient="vertical", command=tree.yview)
+    xscroll = ttk.Scrollbar(frame, orient="horizontal", command=tree.xview)
+    tree.configure(yscrollcommand=yscroll.set, xscrollcommand=xscroll.set)
+    tree.grid(row=0, column=0, sticky="nsew")
+    yscroll.grid(row=0, column=1, sticky="ns")
+    xscroll.grid(row=1, column=0, sticky="ew")
+    frame.grid_rowconfigure(0, weight=1)
+    frame.grid_columnconfigure(0, weight=1)
+    tree.tag_configure("odd", background="#F4F8FC")
+    tree.tag_configure("even", background="#FFFFFF")
     return tree
 
 
 def fill_table(tree, sql):
     """Clear a table and reload it using a SELECT query."""
     tree.delete(*tree.get_children())
-    for row in query(sql):
-        tree.insert("", "end", values=row)
+    for index, row in enumerate(query(sql)):
+        tree.insert("", "end", values=row, tags=("even" if index % 2 == 0 else "odd",))
 
 
 def get_values(variables):
@@ -378,7 +389,7 @@ def show_report(kind):
     report_tree["columns"] = headings
     for h in headings:
         report_tree.heading(h, text=h)
-        report_tree.column(h, width=130)
+        report_tree.column(h, width=max(130, min(210, len(str(h)) * 10)), minwidth=100, anchor="w")
     fill_table(report_tree, sql)
 
 
@@ -419,16 +430,64 @@ create_tables()
 add_sample_data()
 
 root = tk.Tk()
-root.title("LifeGuard - Life Insurance Management System")
-root.geometry("980x620")
+root.title("LifeGuard | Life Insurance Management System")
+root.geometry("1120x760")
+root.minsize(940, 640)
+root.configure(bg="#F3F6FA")
 
-tk.Label(root, text="LIFEGUARD - Life Insurance Management System",
-         font=("Arial", 16, "bold"), bg="#14233B", fg="white", pady=10).pack(fill="x")
-summary = tk.Label(root, text="", font=("Arial", 10, "bold"), pady=5)
-summary.pack()
+# A simple built-in ttk theme keeps the interface modern without extra packages.
+style = ttk.Style(root)
+style.theme_use("clam")
+style.configure(".", font=("Segoe UI", 10))
+style.configure("TFrame", background="#F3F6FA")
+style.configure("TLabel", background="#F3F6FA", foreground="#23344D")
+style.configure("TLabelframe", background="#FFFFFF", bordercolor="#D9E3EF")
+style.configure("TLabelframe.Label", background="#FFFFFF", foreground="#176B70",
+                font=("Segoe UI", 10, "bold"))
+style.configure("TNotebook", background="#F3F6FA", borderwidth=0, tabmargins=(5, 5, 5, 0))
+style.configure("TNotebook.Tab", padding=(18, 10), background="#E5ECF4",
+                foreground="#34445B", font=("Segoe UI", 10, "bold"))
+style.map("TNotebook.Tab", background=[("selected", "#FFFFFF")],
+          foreground=[("selected", "#087F8C")])
+style.configure("TEntry", padding=7, fieldbackground="#FFFFFF")
+style.configure("TCombobox", padding=7, fieldbackground="#FFFFFF")
+style.configure("Field.TEntry", padding=7)
+style.configure("Field.TCombobox", padding=7)
+style.configure("Primary.TButton", padding=(14, 8), background="#087F8C",
+                foreground="#FFFFFF", font=("Segoe UI", 9, "bold"), borderwidth=0)
+style.map("Primary.TButton", background=[("active", "#06656F")])
+style.configure("Action.TButton", padding=(13, 8), background="#E1EAF3",
+                foreground="#263A52", borderwidth=0)
+style.map("Action.TButton", background=[("active", "#D0DFEC")])
+style.configure("Danger.TButton", padding=(13, 8), background="#FCE8E8",
+                foreground="#A52A2A", borderwidth=0)
+style.map("Danger.TButton", background=[("active", "#F7D1D1")])
+style.configure("Records.Treeview", rowheight=30, background="#FFFFFF",
+                fieldbackground="#FFFFFF", foreground="#26364D",
+                bordercolor="#DCE5EF", borderwidth=0, font=("Segoe UI", 9))
+style.configure("Records.Treeview.Heading", background="#E8EFF6",
+                foreground="#24364D", font=("Segoe UI", 9, "bold"), padding=(8, 10))
+style.map("Records.Treeview", background=[("selected", "#CBECEF")],
+          foreground=[("selected", "#173A45")])
+
+header = tk.Frame(root, bg="#142B45", padx=22, pady=15)
+header.pack(fill="x")
+tk.Label(header, text="LIFEGUARD", font=("Segoe UI", 21, "bold"),
+         bg="#142B45", fg="#FFFFFF").pack(anchor="w")
+tk.Label(header, text="LIFE INSURANCE MANAGEMENT SYSTEM  •  CBSE CLASS XII PROJECT",
+         font=("Segoe UI", 9, "bold"), bg="#142B45", fg="#8FE0D8").pack(anchor="w", pady=(2, 0))
+
+summary_bar = tk.Frame(root, bg="#FFFFFF", padx=18, pady=11,
+                       highlightbackground="#DCE5EF", highlightthickness=1)
+summary_bar.pack(fill="x", padx=14, pady=(12, 4))
+tk.Label(summary_bar, text="OVERVIEW", bg="#FFFFFF", fg="#087F8C",
+         font=("Segoe UI", 9, "bold")).pack(side="left", padx=(0, 14))
+summary = tk.Label(summary_bar, text="", font=("Segoe UI", 10, "bold"),
+                   bg="#FFFFFF", fg="#26364D", pady=2, anchor="w")
+summary.pack(side="left", fill="x", expand=True)
 
 notebook = ttk.Notebook(root)
-notebook.pack(fill="both", expand=True, padx=8, pady=5)
+notebook.pack(fill="both", expand=True, padx=10, pady=(4, 10))
 
 # --- Customers tab ---
 tab = make_tab("Customers")
